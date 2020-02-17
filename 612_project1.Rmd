@@ -1,0 +1,136 @@
+---
+title: "612 project 1"
+author: "Albina Gallyavova"
+date: "2/17/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    fig_height: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r libraries, echo=FALSE}
+library(knitr)
+library(recommenderlab)
+library(tidyverse)
+library(DT)
+data(MovieLense)
+```
+
+## Intro  
+The recommender system will suggest a movie to a user that he/she previously has not seen. We will use MovieLense dataset available in `recommenderlab` package.
+  
+## Data  
+Per Gorakala and Usuelli,   
+- movies that have been viewed only a few times may be biased due to the lack of data  
+- similarly, users who rated only a few movies, might also be biased.  
+As such, we need to select only relevant movies.  
+
+```{r}
+# code source: Building a recommendation system with R textbook
+# users who rated at least 10 movies and movies that have been watched at least 10 times
+ratings <- MovieLense[rowCounts(MovieLense) > 10, colCounts(MovieLense) > 10]
+
+# take only 1 percent of such users/movies
+min_movies <- quantile(rowCounts(ratings),0.99) # minimum number of movies per user
+min_users <- quantile(colCounts(ratings),0.99) # minimum number of users per movie
+r <- ratings[rowCounts(ratings) > min_movies,colCounts(ratings) > min_users] 
+
+# heatmap of top users and movies
+image(r)
+```
+  
+## Train and test  
+```{r}
+set.seed(1)
+r_df <- as(r,'data.frame')
+train <- sort(sample(nrow(r_df),nrow(r_df)*.70))
+train_df = r_df[train,]
+test_df = r_df[-train,]
+
+# user-item matrix - wide format
+train_df <- reshape(train_df, idvar = "user", timevar = "item", direction = "wide")
+test_df <- reshape(test_df, idvar = "user", timevar = "item", direction = "wide")
+
+# set row index to user id
+row.names(train_df) <- train_df$user
+row.names(test_df) <- test_df$user
+
+#remove user column after setting index
+train_df <- within(train_df, rm(user))
+test_df <- within(test_df, rm(user))
+
+# test data was missing one column, in order to make it easy to compare later to baseline, 
+# we align dimensions and column order in test data with train
+test_df[,setdiff(colnames(train_df), colnames(test_df))] <- NA
+test_df <- test_df[names(train_df)]
+
+datatable(train_df, options = list(scrollX = "300px"))
+datatable(test_df, options = list(scrollX = "300px"))
+```
+  
+## Raw average for train  
+```{r}
+raw_avg <- mean(as.matrix(train_df), na.rm=TRUE)
+```
+Raw average is `r round(raw_avg,2)`.  
+
+## RMSE and raw average for train and test  
+```{r}
+raw_avg_rmse_train <- sqrt(mean(((as.matrix(train_df)-raw_avg)^2), na.rm=TRUE))
+raw_avg_rmse_test <- sqrt(mean(((as.matrix(test_df)-raw_avg)^2), na.rm=TRUE))
+```
+Raw average RMSE for train is `r round(raw_avg_rmse_train,2)`.  
+Raw average RMSE for test is `r round(raw_avg_rmse_test,2)`.  
+  
+## Bias for each user and item in train  
+```{r}
+u_bias <- rowMeans(train_df,na.rm=TRUE) - raw_avg
+i_bias <- colMeans(train_df,na.rm=TRUE) - raw_avg
+u_bias_df <- cbind(train_df,u_bias) 
+i_bias_df <- rbind(u_bias_df,i_bias)
+
+datatable(round(u_bias_df,2) %>% select(u_bias),options = list(scrollX = "300px"))
+datatable(t(tail(round(i_bias_df,2),1)), options = list(scrollX = "300px"))
+```
+  
+## Baseline predictor from the raw average, and the appropriate user and item biases  
+```{r}
+baseline_df <- data.frame(matrix(NA, nrow = nrow(train_df), ncol = ncol(train_df)))
+baseline_df <- raw_avg + replicate(ncol(train_df),u_bias) + t(replicate(nrow(train_df),i_bias))
+colnames(baseline_df) <- colnames(train_df)
+
+# clip ratings at 5 for values greater than 5 and 1 for values below 1
+baseline_df[baseline_df>5] = 5
+baseline_df[baseline_df<1] = 1
+datatable(round(baseline_df,2),options = list(scrollX = "300px"))
+```
+  
+## RMSE for the baseline predictors for training and test data  
+```{r}
+baseline_pred_rmse_train <- sqrt(mean(as.matrix((baseline_df-train_df)^2), na.rm=TRUE))
+baseline_pred_rmse_test <- sqrt(mean(as.matrix((baseline_df-test_df)^2), na.rm=TRUE))
+```
+  
+## Summary  
+```{r}
+perc_impr <- (1-baseline_pred_rmse_test/raw_avg_rmse_test)*100
+```
+
+Comparing RMSE between raw average and baseline predictor we see that baseline predictor improved RMSE from raw average by `r round(perc_impr,2)` percent so we'll use baseline prediction for recommendations.
+Original data contained NAs for some users, and assuming NAs resulted from users not seeing a movie, we can recommend such movie to the user if the rating is above certain threshold. 
+Setting threshold at >=4, we have the following user-item combinations for recommendation.
+
+```{r}
+bl <- rownames_to_column(as.data.frame(baseline_df),var='user')
+bl <- gather(bl,'item','rating',-user) %>% 
+  mutate(item = str_replace(item,'rating.',''))
+
+rec <- merge(r_df,bl,by=c('user','item'),all = TRUE)
+rec[(is.na(rec$rating.x)) & (rec$rating.y>=4),]
+```
+
