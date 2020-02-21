@@ -1,0 +1,37 @@
+---
+title: "612_research1"
+author: "Albina Gallyavova"
+date: "2/20/2020"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+## Spotify
+Spotify is a digital music, podcast, and video streaming service that gives users access to millions of songs and other content from artists all over the world. Apart from giving the users the ability to listen and download music, Spotify enables users to discover new music they might like including from multiple time periods/geographies and unknown artists, create and share playlists with friends and the world, get updates on new releases and concerts and more.    
+
+#### Choose one commercial recommender and describe how you think it works (content-based, collaborative filtering, etc).   
+Although Spotify uses recommenders for a few purposes (radio, similar artists, etc.), Discover weekly is perhaps the most famous for personalized recommendations. Each week on Monday, a user will receive a 30-songs long playlist compiled by Spotify and tailored specifically to the user’s taste.  
+Some observations from personal experience:  
+- suggested songs are not part of a user’s library. I do not recall ever getting a song from my library in the
+weekly.  
+- they could have been on my weekly previously, after a reasonable time break.  
+- include some artists from my library or similar artists (mostly new to me).  
+- reflect recent listening behavior. If I have been listening to one genre more than the other recently, the list
+will incorporate appropriate style. Note, however, that, as I learned from this research, Spotify does build proofs and wait times to ensure the listening pattern wasn’t result of someone “borrowing” your account or you mistakenly following a link.
+
+As many other recommenders, Spotify’s is based on collaborative filtering and content-based methods. It uses collaborative filtering to identify users whose listening preferences overlap with my own to recommend me songs I have not heard from those users’ playlists. However, this approach might be limiting when it comes to introducing new music, not yet in either user’s library, and to remediate this and other issues related to recommendations based on usage data, Spotify utilizes content-based methods to learn and understand your musical preferences in more detail. For example,it uses NLP to scan the web for new releases and relevant audience feedback. In addition to these, Spotify applies even more scientific methods like deep learning to analyze audio signals (details can be found at http://benanne.github.io/2014/08/05/spotify-cnns.html). What makes Spotify’s recommenders even more complex, as seen above, it does adjust recommendations constantly based on the listening history and patterns. Besides obtaining user feedback through tools like “thumbs up/down”, it analyzes and interprets behavior on the fly. If you clicked on the artist or album, it might interpret this as a “like”; similarly, if you forwarded a new track within few seconds, it concludes you
+“dislike”.  
+
+#### Does the technique deliver a good experience or are the recommendations off-target?   
+As a user, I am extrememely satisfied with Spotify’s recommendations. 
+
+## Attacks on Recommender Systems  
+I personally have never heard of such attacks but would think that attack prevention mechanisms can incorporate social network analysis to identify the groups of people that are acting together. Additionally, if fake profiles are created for the purpose of initiating an attack, then profile injections coud be prevented by means of captchas and other security mechanisms.
+
+
+*Additional references*   
+https://qz.com/571007/the-magic-that-makes-spotifys-discover-weekly-playlists-so-damn-good/   
+https: //www.slideshare.net/erikbern/collaborative-filtering-at-spotify-16182818/39-2D_iteration_example   https://www.slideshare.net/MrChrisJohnson/from-idea-to-execution-spotifys-discover-weekly  
+https://www.aaai.org/Papers/AAAI/2005/AAAI05-053.pdf
