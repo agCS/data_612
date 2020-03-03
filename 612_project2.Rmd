@@ -1,0 +1,189 @@
+---
+title: "612 project 2"
+author: "Albina Gallyavova"
+date: "3/2/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    fig_height: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r libraries, echo=FALSE}
+library(knitr)
+library(recommenderlab)
+library(tidyverse)
+library(DT)
+data(MovieLense)
+```
+
+## Data  
+Per Gorakala and Usuelli,   
+- movies that have been viewed only a few times may be biased due to the lack of data  
+- similarly, users who rated only a few movies, might also be biased.  
+As such, we need to select only relevant movies.  
+
+```{r}
+# code source: Building a recommendation system with R textbook
+# users who rated at least 50 movies and movies that have been watched at least 100 times
+ratings <- MovieLense[rowCounts(MovieLense) > 50, colCounts(MovieLense) > 100]
+
+# take only 1 percent of such users/movies
+min_movies <- quantile(rowCounts(ratings),0.98) # minimum number of movies per user
+min_users <- quantile(colCounts(ratings),0.98) # minimum number of users per movie
+r <- ratings[rowCounts(ratings) > min_movies,colCounts(ratings) > min_users] 
+
+# heatmap of top users and movies
+image(r)
+```
+
+## Recommenders 
+Collaborative-Filtering systems focus on the relationship between users and items. Similarity of items is determined by the similarity of the ratings of those items by the users who have rated both items. In the following section we will recommend movies to users based on different similarity methods (Cosine/Pearson) while keeping the number of similar users/items the same (5).  
+
+### Train and test  
+```{r}
+which_train <- sample(x=c(TRUE,FALSE), size = nrow(ratings), replace=TRUE, prob = c(0.8,0.2))
+train <- ratings[which_train,]
+test <- ratings[!which_train,]
+```
+  
+### Model - IBCF, k=5, cosine similarity  
+```{r}
+recc_model <- Recommender(data=train,method="IBCF", parameter = list(k=5,method='cosine'))
+
+recc_pred <- predict(object = recc_model, newdata = test, n = 5)
+recc_matrix <- sapply(recc_pred@items, function(x) {
+  colnames(ratings)[x]
+})
+recc_matrix[,1:3]
+model_details <- getModel(recc_model)
+col_sums <- colSums(model_details$sim > 0)
+qplot(col_sums)+stat_bin(binwidth=1) + ggtitle("Dist of column count")
+```
+
+Movies that are similar to many others:  
+```{r}
+which_max <- order(col_sums, decreasing=TRUE)[1:5]
+rownames(model_details$sim)[which_max]
+``` 
+
+### Model - IBCF, k=5, Pearson similarity  
+```{r}
+#model
+recc_model <- Recommender(data=train,method="IBCF", parameter = list(k=5,method='Pearson'))
+recc_pred <- predict(object = recc_model, newdata = test, n = 5)
+recc_matrix <- sapply(recc_pred@items, function(x) {
+  colnames(ratings)[x]
+})
+recc_matrix[,1:3]
+
+model_details <- getModel(recc_model)
+col_sums <- colSums(model_details$sim > 0)
+qplot(col_sums)+stat_bin(binwidth=1) + ggtitle("Dist of column count")
+```
+
+Movies that are similar to many others:  
+```{r}
+which_max <- order(col_sums, decreasing=TRUE)[1:5]
+rownames(model_details$sim)[which_max]
+```
+
+### Model - UBCF, nn=5, Cosine similarity  
+```{r}
+#model
+recc_model <- Recommender(data=train,method="IBCF", parameter = list(nn=5,method='Cosine'))
+
+recc_pred <- predict(object = recc_model, newdata = test, n = 5)
+recc_matrix <- sapply(recc_pred@items, function(x) {
+  colnames(ratings)[x]
+})
+recc_matrix[,1:3]
+
+model_details <- getModel(recc_model)
+col_sums <- colSums(model_details$sim > 0)
+qplot(col_sums)+stat_bin(binwidth=1) + ggtitle("Dist of column count")
+```
+
+Movies that are similar to many others:  
+```{r}
+which_max <- order(col_sums, decreasing=TRUE)[1:5]
+rownames(model_details$sim)[which_max]
+```
+
+### Model - UBCF, nn=5, Pearson similarity  
+```{r}
+#model
+recc_model <- Recommender(data=train,method="IBCF", parameter = list(nn=5,method='Pearson'))
+
+recc_pred <- predict(object = recc_model, newdata = test, n = 5)
+recc_matrix <- sapply(recc_pred@items, function(x) {
+  colnames(ratings)[x]
+})
+recc_matrix[,1:3]
+
+model_details <- getModel(recc_model)
+col_sums <- colSums(model_details$sim > 0)
+qplot(col_sums)+stat_bin(binwidth=1) + ggtitle("Dist of column count")
+```
+
+Movies that are similar to many others:  
+```{r}
+which_max <- order(col_sums, decreasing=TRUE)[1:5]
+rownames(model_details$sim)[which_max]
+```
+
+## Evaluation of models  
+
+```{r}
+# https://www.rdocumentation.org/packages/recommenderlab/versions/0.2-5/topics/evaluationScheme
+
+scheme <- ratings %>% 
+  evaluationScheme(method = "cross",
+                   k=3, #number of folds/times to run the evaluation 
+                   train  = 0.8, 
+                   given  = 5, # single number of items given for evaluation
+                   goodRating = 5 # threshold at which ratings are considered good for evaluation.
+                   )
+
+algorithms <- list(
+  "IBCF_cosine" = list(name  = "IBCF", param = list(k = 5, method="Cosine")), # where k is most similar items
+  "IBCF_pearson5" = list(name  = "IBCF", param = list(k = 5, method="Pearson")),
+  "IBCF_pearson15" = list(name  = "IBCF", param = list(k = 15, method="Pearson")),
+  "UBCF_cosine" = list(name  = "UBCF", param = list(method = "Cosine", nn=5)), # where nn is most similar users
+  "UBCF_pearson" = list(name  = "UBCF", param = list( method = "Pearson", nn=5)),
+  "UBCF_pearson15" = list(name  = "UBCF", param = list( method = "Pearson", nn=15)))
+
+# https://www.rdocumentation.org/packages/recommenderlab/versions/0.2-5/topics/evaluate
+results <- evaluate(scheme, 
+                    algorithms, 
+                    type = "topNList", # evaluate "topNList" or "ratings"
+                    n = c(1, 3, 5, 10) # N (number of recommendations) of the top-N lists generated
+                    )
+```
+
+```{r}
+results
+avg(results)
+plot(results, annotate=TRUE) 
+title('ROC curve')
+plot(results, "prec/rec", annotate=TRUE,)
+title("Precision-recall")
+```
+ 
+```{r}
+## Predict missing ratings 
+## (results in RMSE, MSE and MAE)
+pred <- evaluate(scheme, algorithms, type="ratings") # evaluate "topNList" or "ratings"
+avg(pred)
+plot(pred)
+```
+
+## Conclusion  
+Although there was some overlap between recommendations, using different algorithms (IBCF/UBCF) and parameters (method, k, nn) resulted in slightly different predictions for the same users.
+Further, model evaluation results demostrated that Pearson similarity seems to perform better compared to Cosine as evident from both ROC curve and RMSE. Additionally, increasing the number of most similar items also contributed to improvements in model performance (5 vs 15).
+
+
