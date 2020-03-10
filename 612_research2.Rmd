@@ -1,0 +1,59 @@
+---
+title: "612_research2"
+author: "Albina Gallyavova"
+date: "3/8/2020"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+**For this discussion item, please watch the [following talk](http://www.youtube.com/watch?v=3LBgiFch4_g) and summarize what you found to be the most important or interesting points. The first half will cover some of the mathematical techniques covered in this unit's reading and the second half some of the data management challenges in an industrial-scale recommendation system.**    
+
+### Spotify intro  
+Spotify is an on-demand streaming service that uses different ways of recommending music, such as:  
+- personalized recommendation based on what users listen to  
+- artist radio with similar artists  
+- related artist  
+Spotify has been utilizising Hadoop but recently have started experimenting with Spark (still in development, not production).  
+  
+### Methods to find recommendations  
+- Manual curation, the problem with it is that it does not scale well.  
+- Manual tagging which Pandora does with Music Genome project. Music experts manually tag songs with attributes. Also does not scale well, adn requires a lot of manual labor which can be expensive.  
+- Audio content, text analysis on music blogs, articles talking about similar artists.  
+- Collaborative filtering is what Spotify uses. It works by finding what other users are listening to and recommend based on that.  
+  
+### How to do collaborative filtering?    
+  
+#### Explicit matrix factorizaion    
+many users, many catalog and users rated subset but not all. Goal is to predict how users will rate movies that the aven't rated and to recommend movies that you predict they will rate highly. One way to do it is to approximate original matrix by the product of two lower dimension matrices. This method requires to learn factors associated with users and movies such that product of these factors approximates original rating matrix by minimizing RMSE.  
+
+#### Implicit matrix factorizaion  
+Instead of explicit ratings this method uses binary ratings that implicitly infer what users like based on what users listened to. Minimizes RMSE as well but uses number of streams as weights. To solve it, Spotify uses alternating least squares (ALS) that, e.g., if fixing y vector (songs) becomes weighted ridge regression. The nice thing about this method is that it can pull out XtX, which only require ratings that user streamed, don't need all zeroes.    
+  
+### Scaling up with Hadoop  
+As of 2014 Spotify ran Hadoop with 700 nodes in datacenter running Yarn.  
+They create ratings matrix blocked by blocks that they refer to as full gridify, with each block referring to subset of users and songs. To map those, it is not required to have all item vectors (if solving for users), only vectors associated with a specific block. In reduce stage, they sum up all terms and solve for optimal user vectors while using distributed cache to send vectors that a block needs.
+Big problem with such approach is because it's an iterative algorithm, each iteration requires another hadoop job and continuous reading/writing from disk which represents an i/o bottleneck.   
+  
+### Spark  
+With Spark the can load ratings matrix into memory and don't have to re-read at each iteration. They cache and join to where ratings are cached and keep performing iterations.  
+  
+#### 1st attempt  
+Broadcast everything - YtY, item vectors - group ratings by user and then solve for optimal user vector. Problem with this approach is that it requires shuffling data at each iteration unnecesarily while not caching and sending full copy to every worker which is not very efficient.  
+
+#### 2nd attempt    
+Group ratings, partition and cache. Then broadcast YtY, send copy of item vector to relevant block. Still shuffle around before solving for optimal user vectors. Primary benefit of this approach is that ratings which represent a bulk of the data are cached and not shuffled and each partition only requires a small subset of vectors. It also potentially requires less local memory. The issue with this approach is that it is sending a lot of intermediate data over the wire in each iteration, not very efficient again.   
+
+#### 3rd attempt - half gridify  
+Uses MLlib package with Spark. In this method, they partition ratings matrix into user-item blocks but place all of user ratings in the same block and that cuts down a lot on shuffle phase. However, they now have blocks where users potentially cumulatively have listened to every single item in the catalog and processing that much data requires more local memory than full gridify.   
+
+Spark half gridify method took the least time to run, only 1.5 hours versus Hadoop's 10 hours.  
+
+### Relevant learnings  
+- PairRDD functions  
+- Kryo serialization faster than Java serialization but requires to write and register your own serializers  
+- Same issues with breeze numerical package similar to numpy  
+- Running large datasets results in failed executors  
+
+
