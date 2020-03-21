@@ -1,0 +1,132 @@
+---
+title: "612 project 3"
+author: "Albina Gallyavova"
+date: "3/16/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    fig_height: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r libraries, echo=FALSE}
+library(knitr)
+library(recommenderlab)
+library(tidyverse)
+library(DT)
+data(MovieLense)
+```
+
+## Data  
+Per Gorakala and Usuelli,   
+- movies that have been viewed only a few times may be biased due to the lack of data  
+- similarly, users who rated only a few movies, might also be biased.  
+As such, we need to select only relevant movies.  
+
+```{r}
+# code source: Building a recommendation system with R textbook
+# users who rated at least 50 movies and movies that have been watched at least 100 times
+ratings <- MovieLense[rowCounts(MovieLense) > 50, colCounts(MovieLense) > 100]
+
+# take only 2 percent of such users/movies
+min_movies <- quantile(rowCounts(ratings),0.98) # minimum number of movies per user
+min_users <- quantile(colCounts(ratings),0.98) # minimum number of users per movie
+r <- ratings[rowCounts(ratings) > min_movies,colCounts(ratings) > min_users] 
+
+# heatmap of top users and movies
+image(r)
+```
+
+## UBCF vs SVD vs ALS  
+https://github.com/mhahsler/recommenderlab/blob/master/README.md  
+
+### Train and test   
+```{r}
+set.seed(1)
+scheme <- ratings %>% 
+  evaluationScheme(method = "cross",
+                   k=3, #number of folds/times to run the evaluation 
+                   train  = 0.8, 
+                   given  = 15, # items to use to generate recommendations
+                   goodRating = 4 # threshold at which ratings are considered good for evaluation
+                   )
+train <- getData(scheme, "train") # training set
+test <- getData(scheme, "known") # test set with the items used to build recommendations
+unknown <- getData(scheme, "unknown") # test set with the items used to test recommendations
+```
+
+### Model 1 - UBCF, nn=5, Pearson similarity   
+```{r}
+# Train a user-based collaborative filtering recommender using a small training set.
+recc_model <- Recommender(data=train,method="UBCF", parameter = list(nn=15,method='Pearson'))
+
+# Create top-N recommendations for new users (users in test set)
+recc_pred <- predict(object = recc_model, newdata = test, n = 5, type = 'ratings')
+
+```
+
+### Model 2 - SVD  
+```{r}
+# Train SVD recommender using a small training set
+recc_model <- Recommender(data=train,method="SVD", parameter = NULL)
+
+# Create top-N recommendations for new users (users in test set)
+recc_pred <- predict(object = recc_model, newdata = test, n = 5, type = 'ratings')
+
+```
+
+### Model 3 - ALS  
+```{r}
+# Train SVD recommender using a small training set
+recc_model <- Recommender(data=train,method="ALS", parameter = NULL)
+
+# Create top-N recommendations for new users (users in test set)
+recc_pred <- predict(object = recc_model, newdata = test, n = 5, type = 'ratings')
+
+```
+
+## Evaluation of ratings  
+
+```{r}
+# https://www.rdocumentation.org/packages/recommenderlab/versions/0.2-5/topics/evaluationScheme
+
+algorithms <- list(
+  "UBCF_pearson15" = list(name  = "UBCF", param = list( method = "Pearson", nn=15)),
+  "SVD" = list(name = "SVD", param = NULL),
+  "ALS" = list(name = "ALS", param = NULL))
+
+# https://www.rdocumentation.org/packages/recommenderlab/versions/0.2-5/topics/evaluate
+results <- evaluate(scheme, 
+                    algorithms, 
+                    type = "ratings", # evaluate "topNList" or "ratings"
+                    n = c(1, 3, 5, 10) # N (number of recommendations) of the top-N lists generated
+                    )
+
+avg(results)
+plot(results, annotate=TRUE) 
+title('Accuracy metrics')
+```
+
+## Evaluation of recommendations    
+
+```{r}
+results <- evaluate(scheme, 
+                    algorithms, 
+                    # type = "ratings", # evaluate "topNList" or "ratings"
+                    n = c(1, 3, 5, 10) # N (number of recommendations) of the top-N lists generated
+                    )
+
+plot(results, annotate = TRUE, main = "ROC Curve")
+
+# Precision-Recall curves summarize the trade-off between the true positive rate and the positive predictive value for a predictive model using different probability thresholds.
+plot(results, "prec/rec", annotate = TRUE, main = "Precision-Recall")
+```
+
+## Conclusion   
+In terms of performance, ALS did best when building the model, but worst when generating predictions, while SVD took the least amount of time to predict. ALS also most preferable based on RMSE, which is slightly better than for approximately the same UBCF and SVD. However, when examining ROC curve, SVD appears to be the best performing algorithm as it has highest AUC. Additionally, precision-recall plot reveals that ALS has the flattest curve, which means ALS produces overlap between recommendations rendering it worthless.  
+
+
