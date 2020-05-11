@@ -1,0 +1,126 @@
+---
+title: "612 project 5"
+author: "Albina Gallyavova"
+date: "4/20/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    fig_height: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+```{r libraries, echo=FALSE}
+library(knitr)
+library(recommenderlab)
+library(sparklyr)
+library(dplyr)
+# spark_install()
+data(MovieLense)
+
+# establish spark connection
+sc <- spark_connect(master = "local")
+```
+
+**Objective**  
+- Adapt one of your recommendation systems to work with Apache Spark  
+- Compare the performance with your previous iteration. Consider the efficiency of the system and the added complexity of using Spark  
+- For your given recommender system’s data, algorithm(s), and (envisioned) implementation, at what point would you see moving to a distributed platform such as Spark becoming necessary?  
+
+## Data  
+
+We will continue with MovieLens data available in `recommenderlab` package, but this time use all of the data instead of selecting only relevant items, so that we could test algorithms performance on larger dataset.
+```{r}
+
+ratings <- MovieLense #[rowCounts(MovieLense) > 30, colCounts(MovieLense) > 50]
+
+# take only 2 percent of such users/movies
+# min_movies <- quantile(rowCounts(ratings),0.98) # minimum number of movies per user
+# min_users <- quantile(colCounts(ratings),0.98) # minimum number of users per movie
+# r <- ratings[rowCounts(ratings) > min_movies,colCounts(ratings) > min_users] 
+```
+
+### Train and test   
+```{r}
+set.seed(1)
+scheme <- ratings %>% 
+  evaluationScheme(method = "cross",
+                   k=3, #number of folds/times to run the evaluation 
+                   train  = 0.8, 
+                   given  = 15, # items to use to generate recommendations
+                   goodRating = 4 # threshold at which ratings are considered good for evaluation
+                   )
+train <- getData(scheme, "train") # training set
+test <- getData(scheme, "known") # test set with the items used to build recommendations
+unknown <- getData(scheme, "unknown") # test set with the items used to test recommendations
+```
+
+
+## Models
+
+### Recommenderlab ALS  
+```{r}
+# Train recommender
+ptm <- proc.time()
+recc_model <- Recommender(data=train,method="ALS", parameter = NULL)
+train_time <- proc.time() - ptm
+
+# Create top-N recommendations for new users in test set
+ptm <- proc.time()
+recc_pred <- predict(object = recc_model, newdata = test, n = 5, type = 'ratings')
+predict_time <- proc.time() - ptm
+```
+
+### Spark ALS
+```{r}
+# train recommender on spark
+# r_df <- as(ratings, "data.frame")
+train_df <- as(train, "data.frame")
+test_df <- as(test, "data.frame")
+train_df$user <- as.numeric(train_df$user)
+train_df$rating <- as.numeric(train_df$rating)
+train_df <- transform(train_df, item = as.numeric(factor(item)))
+
+test_df$user <- as.numeric(test_df$user)
+test_df$rating <- as.numeric(test_df$rating)
+test_df <- transform(test_df, item = as.numeric(factor(item)))
+
+train_spark <- sdf_copy_to(sc, train_df, "train_spark", overwrite = TRUE)
+test_spark <- sdf_copy_to(sc, test_df, "train_spark", overwrite = TRUE)
+
+ptm <- proc.time()
+als_model <- ml_als(train_spark, 
+                    rating_col = "rating", 
+                    user_col = "user", 
+                    item_col = "item")
+train_time_spark <- proc.time() - ptm
+
+summary(als_model)
+
+# Predictions
+ptm <- proc.time()
+rec <- ml_recommend(als_model)
+pred <- ml_predict(als_model,spark_dataframe(test_spark))
+predict_time_spark <- proc.time() - ptm
+```
+
+## Conclusion   
+```{r}
+train_time <- rbind(train_time,train_time_spark)
+pred_time <- rbind(predict_time,predict_time_spark)
+rownames(train_time) <- c('ALS','ALS Spark')
+rownames(pred_time) <- c('ALS','ALS Spark')
+
+train_time 
+pred_time
+```
+
+```{r}
+spark_disconnect(sc)
+```
+
+For this exercise we implemented ALS using recommenderlab and spark. Unlike the previous times, however, we used all of the data available in MovieLense dataset. From the results it is evident that both algorithms are able to build models in quite short time, although spark implementation takes a little longer. On the contrary, although calculating predictions increased spark implementation two-fold, it still ended up outperforming recommenderlab implementation significantly (30+ times faster). These results highlight that, as the data get bigger, implementation would have to move to distributed system such as spark to improve processing times and be able to provide recommendation in real-time. 
+
