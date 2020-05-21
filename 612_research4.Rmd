@@ -1,0 +1,20 @@
+---
+title: "612_research4"
+author: "Albina Gallyavova"
+date: "5/21/2020"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+**Mitigating the Harm of Recommender Systems**
+
+Read one or more of the articles below and consider how to counter the radicalizing effects of recommender systems or ways to prevent algorithmic discrimination.
+Renee Diresta, Wired.com (2018): Up Next: A Better Recommendation System
+Zeynep Tufekci, The New York Times (2018): YouTube, the Great Radicalizer
+Sanjay Krishnan, Jay Patel, Michael J. Franklin, Ken Goldberg (n/a): Social Influence Bias in Recommender Systems: A Methodology for Learning, Analyzing, and Mitigating Bias in Ratings
+
+In addition to the articles i read a few papers that all seem to conclude that either simple fixes like flagging sensitive groups/attributes or some complex mathematical models can help adjust the biases in models so that radicalization effects can be reduced. In my view, we need to start by looking inside and try to identify and work through biases and ignorances that we ourselves hold that actually could lead to self-radicalization. For some reasons, after reading all this information, i've noticed that humans are constantly depicted as some mindless creatures that will take whatever is fed to them, is there no such thing as individual thinking? Are we so immature as to not be able to identify when we are being influenced by unsupported facts and/or social pressures? Are we so self-unaware that we lost the ability to think and choose for ourselves? Algorithms do what they are trained to do and yes, biases can sneak in, but the consumers should also bear responsibility for what they consume. Many systems already provide tools to manage recommendations, i can remove certain browsing history on amazon if i don't want to see similar products, i also can dislike a song Spotify recommends or be even proactive and open enough to go out there and search for genres i would normally not listen to. So the very first thing is in my view to actually take some control over what we consume.
+
