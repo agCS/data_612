@@ -1,0 +1,36 @@
+---
+title: "612_research3"
+author: "Albina Gallyavova"
+date: "5/21/2020"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+**As more systems and sectors are driven by predictive analytics, there is increasing awareness of the possibility and pitfalls of algorithmic discrimination. In what ways do you think Recommender Systems reinforce human bias?**   
+
+There are numerous ways or reasons due to which biases can be introduced into modeling process. A known talk by Dr. Ricardo Baeza-Yates, the CTO of NTENT, titled “Biases in Search and Recommender Systems” appears to have become the industry standard in defining some of the major pitfalls. According to his research, the biases can be in the data, the algorithms, and user interaction, and he specifically focuses on feedback loops (e.g., ranking). He defines three main types of bias:
+
+1. Statistical bias involves extrapolatng results of sample testing to the whole population without considering data gathering process, validity of data or the presence of noise in the data. This could be easily examplified with cases of online surveys done for general population but not accounting for the segments of population without access to the world web, hence excluding opinions and experiences of such layers of society from experimental results.
+2. Cultural biases focus on gender, race, religion, linguistics and other culture-related topics. For example, one study found a language bias in web content with roughly 27% of internet users speaking English, but a much greater proportion of the web content, 55.4%, being in English.
+3. Cognitive biases include extrapolation of one's own beliefs onto the results of the test. For example, one type of cognitive bias is confirmation bias, which is the tendency to search for, interpret, favor, and recall information in a way that affirms one’s prior beliefs or hypotheses.
+
+Separate studies identified other types of bias:
+- Activity bias in user-generated content is caused by a small proportion of population generating majority of web content.
+- ML reinforced bias results from algorithms feeding on their own recommendation essentially creating feedback loops in which users are forced to select only items that are presented (if i don't know about existence of a movie adn it is never being presented to me by system like Netflix, i won't ever be able to provide feedback on it).
+- Popularity bias is present in models recommending most popular items only
+- Presentation bias could be increased by promoting specific items
+- Position bias appears when items are presented in the areas of the screen where our eyes tend to be attracted (right top corner)
+- Social bias comes from high rankings of items
+- Ranking bias is somewhat equivalent to social bias adn happens when users might believe that higher-ranked items are better choices
+- Click bias might inadvertedly interpret click as positive feedback (i often click on things by mistake)
+- Similarly, hovering mouse over an item is considered positive feedback but simply could be caused by mouse malfunction
+
+**Reflecting on the techniques we have covered, do you think recommender systems reinforce or help to prevent unethical targeting or customer segmentation?  Please provide one or more examples to support your arguments.**    
+
+In my view, the answer depends on the point in time at which we look. Perhaps, in the earlier times just at the onset of recommender era, recommenders reinforced human bias significantly, the methods and techniques were new, not enough knowldege was amassed and not enough researchers were there to test and report on the results and potential pitfalls. But as time passes and as we mature as producers and consumers of recommenders, just as the question hints to, we become more aware of such pitfalls. As a result, the are more and more techniques that could be applied to reduce bias in models, whatever it means in relevant context. For example, in addition to all the methods described in the weekly materials, we learned in this semester, simply introducing diversity, novelty and serendipity into models can broaden the recommendations already and reduce predefined segmentation by providing users wiht a chance to see new, less related products. As we continue to develop such methods, chances are there will never be 100%-bias-free systems, but it is important to continue education of the masses on the pitfalls.
+
+*Resources*  
+https://www.searchenginejournal.com/biases-search-recommender-systems/339319/#close
+https://arxiv.org/pdf/1907.13286.pdf
